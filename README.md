@@ -2,6 +2,10 @@
 
 Benchmarking text classification with Keras and Ruimtehol packages on celebrity twitter data.
 
+<p align="center">
+  <img src="https://github.com/jlacko/celebrity-faceoff/blob/master/img/mugshots.jpg?raw=true" alt="arent't they lovely?"/>
+</p>
+
 The underlying dataset is 9,000 tweets, collected on 2019-02-02 via [`rtweet`](https://github.com/mkearney/rtweet). It consists of 1,500 tweets each from  
 
 * [Hadley Wickham](https://twitter.com/hadleywickham), 
