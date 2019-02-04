@@ -38,3 +38,4 @@ rsconnect/
 
 # project itself
 token.rds
+*.udpipe
