@@ -5,9 +5,10 @@ library(rtweet)
 
 # token is gitignored; and not really necessary (/data is populated)
 # more info on homepage of rtweet package: https://rtweet.info/#create-an-app
-twitter_token <- readRDS("token.rds")
+twitter_token <- readRDS('token.rds')
 
-celebs <- c("hadleywickham", "wesmckinn", "fchollet",  "KimKardashian", "khloekardashian", "kourtneykardash")
+celebs <- c("hadleywickham", "wesmckinn", "fchollet", # i.e. tidyverse, pandas, keras 
+            "KimKardashian", "khloekardashian", "kourtneykardash") # i.e. the Kardashians
 
 scrape <- function(handle) {
   
@@ -16,8 +17,7 @@ tweets <- get_timelines(handle,
                         language = 'en',
                         token = twitter_token) %>% 
   mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|&amp;", "")) %>% # links add no value
-#  mutate(text = str_replace_all(text, "@", "")) %>% # get rid of handles
-  filter(!is_retweet) %>% # retweets are not original
+  filter(!is_retweet) %>% # retweets are not original material
   filter(nchar(text) > 20) %>% # enforce minimum length - we need _some_ features to hang on to... 
   select(id = status_id, 
          name = screen_name, 
