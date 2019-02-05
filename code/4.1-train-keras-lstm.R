@@ -60,10 +60,7 @@ vocab_size <- vocabulary %>% # count the unique ids
   unique() %>%
   length() + 1 # one extra for zero used as padding
 
-library(keras)
-
-# declare model
-
+# declare keras model
 model <- keras_model_sequential() 
 
 model %>% 
