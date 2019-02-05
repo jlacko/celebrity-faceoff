@@ -7,7 +7,7 @@ set.seed(42) # trust no other!
 
 src <- read_csv('./data/test_tweets.csv') # or what not...
 
-model <- starspace_load_model('./model/starspace.rds', method = 'ruimtehol')
+model <- starspace_load_model('./models/starspace.rds', method = 'ruimtehol')
 
 prediction <- predict(model, newdata = src$text, type = 'generic') %>%
   unlist(recursive = T) %>%

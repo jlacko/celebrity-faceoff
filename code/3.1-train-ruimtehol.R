@@ -15,4 +15,4 @@ model <- embed_tagspace(x = src$text, y = src$name,
                         ngrams = 2, minCount = 2)
 plot(model)
 
-starspace_save_model(model, file = './model/starspace.rds', method = 'ruimtehol')
+starspace_save_model(model, file = './models/starspace.rds', method = 'ruimtehol')
