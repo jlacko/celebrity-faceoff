@@ -12,7 +12,7 @@ src <- readr::read_csv('./data/train_tweets.csv')
 
 vocabulary <- udpipe_annotate(udmodel, x = src$text, doc_id = src$id) %>%
   as.data.frame() %>%
-  count(lemma) %>%slovnik
+  count(lemma) %>%
   ungroup() %>%
   arrange(desc(n)) %>%
   filter(n>=5) %>% # menší frekvence není vypovídající...
