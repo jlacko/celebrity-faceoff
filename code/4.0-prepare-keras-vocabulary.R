@@ -15,7 +15,7 @@ vocabulary <- udpipe_annotate(udmodel, x = src$text, doc_id = src$id) %>%
   count(lemma) %>%
   ungroup() %>%
   arrange(desc(n)) %>%
-  filter(n>=5) %>% # menší frekvence není vypovídající...
+  filter(n>=3) %>% # menší frekvence není vypovídající...
   mutate(id_slovo = row_number()) %>%
   select(lemma, id_slovo)
 

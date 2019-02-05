@@ -9,7 +9,7 @@ last_udpipe <- 'english-ewt-ud-2.3-181115.udpipe' # (so far) latest version
 if (!file.exists(last_udpipe)) udpipe_download_model(language = "english") # once is enough...
 udmodel <- udpipe_load_model(file = last_udpipe) # load the model
 
-tweets <- read_csv('./data/dev_tweets.csv') # tweets
+tweets <- read_csv('./data/train_tweets.csv') # tweets
 
 vocabulary <- read_csv('./data/vocabulary.csv') # prepared in 4.0
 
@@ -64,13 +64,16 @@ vocab_size <- vocabulary %>% # count the unique ids
 model <- keras_model_sequential() 
 
 model %>% 
-  layer_embedding(input_dim = vocab_size, output_dim = 256) %>%
-  bidirectional(layer_lstm(units = 128)) %>%
-  layer_dropout(rate = 0.5) %>% 
-  layer_dense(units = 6, activation = 'sigmoid') # one output per author
+  layer_embedding(input_dim = vocab_size, output_dim = 128) %>%
+  bidirectional(layer_lstm(units = 64)) %>%
+  layer_dropout(rate = 0.25) %>% 
+  layer_dense(units = 64, activation = 'relu') %>%   
+  layer_dense(units = 32, activation = 'relu') %>% 
+#  layer_dropout(rate = 0.16) %>% 
+  layer_dense(units = 6, activation = 'softmax') # one output per author
 
 model %>% compile(
-  optimizer = "rmsprop",
+  optimizer = "adam",
   loss = "categorical_crossentropy",
   metrics = c("accuracy")
 )
@@ -80,11 +83,11 @@ model %>% compile(
 history <- model %>% 
   fit( # this will take a while...
     keras_input, keras_output, 
-    epochs = 25, batch_size = nrow(keras_input)/5, 
+    epochs = 25, batch_size = nrow(keras_input)/10, 
     validation_split = 1/5
   )
 
-print(paste0("Train accuracy: ", as.character(formatC(100 * last(history$metrics$acc), digits = 2, format = "f")), "%"))
+print(paste0("Validation accuracy: ", as.character(formatC(100 * last(history$metrics$val_acc), digits = 2, format = "f")), "%"))
 
 model %>% 
   save_model_hdf5("./models/bi-ltsm.h5")
