@@ -12,6 +12,7 @@ src <- readr::read_csv('./data/train_tweets.csv')
 
 vocabulary <- udpipe_annotate(udmodel, x = src$text, doc_id = src$id) %>%
   as.data.frame() %>%
+  mutate(lemma = ifelse(is.na(lemma), token, lemma)) %>%
   count(lemma) %>%
   ungroup() %>%
   arrange(desc(n)) %>%

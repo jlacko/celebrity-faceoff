@@ -14,8 +14,9 @@ tweets <- read_csv('./data/test_tweets.csv') %>% # tweets
 
 vocabulary <- read_csv('./data/vocabulary.csv') # prepared in 4.0
 
-words <- udpipe_annotate(udmodel, x = tweets$text, doc_id = tweets$id) %>% 
+words <- udpipe_annotate(udmodel, x = tweets$text, doc_id = tweets$id, trace = 250) %>% 
   as.data.frame() %>%
+  mutate(lemma = ifelse(is.na(lemma), token, lemma)) %>%
   select(id = doc_id, token, lemma, upos, sentence_id) %>%
   mutate(id = as.numeric(id))
 
