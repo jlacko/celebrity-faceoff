@@ -68,14 +68,13 @@ model <- keras_model_sequential()
 model %>% 
   layer_embedding(input_dim = vocab_size, output_dim = 256) %>%
   bidirectional(layer_lstm(units = 128)) %>%
-  layer_dropout(rate = 0.25) %>% 
+  layer_dropout(rate = .5) %>% 
   layer_dense(units = 64, activation = 'relu') %>%   
   layer_dense(units = 32, activation = 'relu') %>% 
-  layer_dropout(rate = 0.16) %>% 
   layer_dense(units = 6, activation = 'softmax') # one output per author
 
 model %>% compile(
-  optimizer = "adam",
+  optimizer = "rmsprop",
   loss = "categorical_crossentropy",
   metrics = c("accuracy")
 )
@@ -85,7 +84,7 @@ model %>% compile(
 history <- model %>% 
   fit( # this will take a while...
     keras_input, keras_output, 
-    epochs = 50, batch_size = nrow(keras_input)/10, 
+    epochs = 15, batch_size = nrow(keras_input)/10, 
     validation_split = 1/5
   )
 
