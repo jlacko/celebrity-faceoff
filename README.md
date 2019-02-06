@@ -1,6 +1,6 @@
 # Celebrity Faceoff: a Text Classification Challenge
 
-Benchmarking text classification with Keras and Ruimtehol packages on celebrity twitter data.
+Benchmarking text classification with [`keras`](https://github.com/rstudio/keras) and [`ruimtehol`](https://github.com/bnosac/ruimtehol) packages on celebrity twitter data.
 
 <p align="center">
   <img src="https://github.com/jlacko/celebrity-faceoff/blob/master/img/mugshots.jpg?raw=true" alt="arent't they lovely?"/>
@@ -25,5 +25,4 @@ At the first glance a fancy Keras model performs better than StarSpace.
 
 I do not feel though that such a simple percentage comparison gives the models justice, as the StarSpace set up in a breeze and took about a minute to train. The effort and resources necessary to come up with the Keras result were much, much higher.
 
-So my provisional verdict on [`ruimtehol`] / StarSpace is that it gives an *adequate* result at the fraction of the effort & resources required to set up a fancy solution.
-
+So my provisional verdict on `ruimtehol` / `StarSpace` is that it gives an *adequate* result at the fraction of the effort & resources required to set up a fancy solution.
