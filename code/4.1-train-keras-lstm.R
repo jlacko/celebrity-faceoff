@@ -9,7 +9,8 @@ last_udpipe <- 'english-ewt-ud-2.3-181115.udpipe' # (so far) latest version
 if (!file.exists(last_udpipe)) udpipe_download_model(language = "english") # once is enough...
 udmodel <- udpipe_load_model(file = last_udpipe) # load the model
 
-tweets <- read_csv('./data/train_tweets.csv') # tweets
+tweets <- read_csv('./data/train_tweets.csv') %>% # tweets
+  arrange(id)
 
 vocabulary <- read_csv('./data/vocabulary.csv') # prepared in 4.0
 
@@ -41,6 +42,7 @@ word_matrix <- words %>% # words
 keras_input <- tweets %>%
   select(id) %>%
   inner_join(word_matrix, by = c('id' = 'id')) %>%
+  arrange(id) %>%
   select(-id) %>%
   as.matrix() 
 
@@ -64,12 +66,12 @@ vocab_size <- vocabulary %>% # count the unique ids
 model <- keras_model_sequential() 
 
 model %>% 
-  layer_embedding(input_dim = vocab_size, output_dim = 128) %>%
-  bidirectional(layer_lstm(units = 64)) %>%
+  layer_embedding(input_dim = vocab_size, output_dim = 256) %>%
+  bidirectional(layer_lstm(units = 128)) %>%
   layer_dropout(rate = 0.25) %>% 
   layer_dense(units = 64, activation = 'relu') %>%   
   layer_dense(units = 32, activation = 'relu') %>% 
-#  layer_dropout(rate = 0.16) %>% 
+  layer_dropout(rate = 0.16) %>% 
   layer_dense(units = 6, activation = 'softmax') # one output per author
 
 model %>% compile(
@@ -83,7 +85,7 @@ model %>% compile(
 history <- model %>% 
   fit( # this will take a while...
     keras_input, keras_output, 
-    epochs = 25, batch_size = nrow(keras_input)/10, 
+    epochs = 50, batch_size = nrow(keras_input)/10, 
     validation_split = 1/5
   )
 

@@ -9,7 +9,8 @@ last_udpipe <- 'english-ewt-ud-2.3-181115.udpipe' # (so far) latest version
 if (!file.exists(last_udpipe)) udpipe_download_model(language = "english") # once is enough...
 udmodel <- udpipe_load_model(file = last_udpipe) # load the model
 
-tweets <- read_csv('./data/test_tweets.csv') # tweets
+tweets <- read_csv('./data/test_tweets.csv') %>% # tweets
+  arrange(id)
 
 vocabulary <- read_csv('./data/vocabulary.csv') # prepared in 4.0
 
@@ -41,6 +42,7 @@ word_matrix <- words %>% # words
 keras_input <- tweets %>%
   select(id) %>%
   inner_join(word_matrix, by = c('id' = 'id')) %>%
+  arrange(id) %>%
   select(-id) %>%
   as.matrix() 
 
