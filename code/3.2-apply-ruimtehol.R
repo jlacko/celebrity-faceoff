@@ -5,7 +5,9 @@ library(ruimtehol)
 
 set.seed(42) # trust no other!
 
-src <- read_csv('./data/test_tweets.csv') # or what not...
+src <- read_csv('./data/test_tweets.csv') %>% # or what not...  
+  mutate(text = str_to_lower(text))
+  
 
 model <- starspace_load_model('./models/starspace.rds', method = 'ruimtehol')
 

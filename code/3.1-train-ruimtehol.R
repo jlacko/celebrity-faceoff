@@ -5,7 +5,8 @@ library(ruimtehol)
 
 set.seed(42) # trust no other!
 
-src <- read_csv('./data/train_tweets.csv') # or what not...
+src <- read_csv('./data/train_tweets.csv') %>% # or what not...
+  mutate(text = str_to_lower(text))
 
 model <- embed_tagspace(x = src$text, y = src$name,
                         dim = 75, 
