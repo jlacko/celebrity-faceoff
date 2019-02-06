@@ -1,0 +1,3 @@
+model,total,correct
+StarSpace,1800,1115
+Keras LSTM,1800,1303
