@@ -66,8 +66,8 @@ vocab_size <- vocabulary %>% # count the unique ids
 model <- keras_model_sequential() 
 
 model %>% 
-  layer_embedding(input_dim = vocab_size, output_dim = 512) %>%
-  bidirectional(layer_lstm(units = 256)) %>%
+  layer_embedding(input_dim = vocab_size, output_dim = 256, mask_zero = T) %>%
+  bidirectional(layer_lstm(units = 128)) %>%
   layer_dropout(rate = .5) %>% 
   layer_dense(units = 6, activation = 'softmax') # one output per author
 
@@ -82,7 +82,7 @@ model %>% compile(
 history <- model %>% 
   fit( # this will take a while...
     keras_input, keras_output, 
-    epochs = 25, batch_size = nrow(keras_input)/10, 
+    epochs = 15, batch_size = nrow(keras_input)/10, 
     validation_split = 1/5
   )
 
