@@ -3,3 +3,4 @@ plain vanilla StarSpace,1800,1115
 lemmatized StarSpace,1800,1281
 Keras single LSTM,1800,1365
 Keras stacked LSTM, 1800, 1376
+Keras 4 hidden layers, 1800, 1347
