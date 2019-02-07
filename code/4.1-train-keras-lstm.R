@@ -14,9 +14,8 @@ tweets <- read_csv('./data/train_tweets.csv') %>% # tweets
 
 vocabulary <- read_csv('./data/vocabulary.csv') # prepared in 4.0
 
-words <- udpipe_annotate(udmodel, x = tweets$text, doc_id = tweets$id, trace = 250) %>% 
+words <- udpipe_annotate(udmodel, x = tweets$text, doc_id = tweets$id) %>% 
   as.data.frame() %>%
-  mutate(lemma = ifelse(is.na(lemma), token, lemma)) %>%
   select(id = doc_id, token, lemma, upos, sentence_id) %>%
   mutate(id = as.numeric(id))
 
@@ -68,10 +67,10 @@ model <- keras_model_sequential()
 
 model %>% 
   layer_embedding(input_dim = vocab_size, output_dim = 256) %>%
-  layer_lstm(units = 256, return_sequences = T) %>%
-  layer_lstm(units = 128, return_sequences = T) %>%
-  layer_lstm(units = 64) %>%
-  layer_dropout(rate = 1/3) %>%
+  bidirectional(layer_lstm(units = 128)) %>%
+  layer_dropout(rate = .5) %>% 
+  layer_dense(units = 64, activation = 'relu') %>%   
+  layer_dense(units = 32, activation = 'relu') %>% 
   layer_dense(units = 6, activation = 'softmax') # one output per author
 
 model %>% compile(
@@ -85,7 +84,7 @@ model %>% compile(
 history <- model %>% 
   fit( # this will take a while...
     keras_input, keras_output, 
-    epochs = 20, batch_size = nrow(keras_input)/5, 
+    epochs = 15, batch_size = nrow(keras_input)/10, 
     validation_split = 1/5
   )
 
