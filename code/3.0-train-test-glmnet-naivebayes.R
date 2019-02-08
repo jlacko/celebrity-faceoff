@@ -26,8 +26,9 @@ dtm <- document_term_matrix(dtm)
 testdata  <- dtm[rownames(dtm) %in% src$doc_id[src$traintest == "test"], ]
 traindata <- dtm[rownames(dtm) %in% src$doc_id[src$traintest == "train"], ]
 traindata <- dtm_remove_lowfreq(traindata, minfreq = 3)
+set.seed(42)
 m <- cv.glmnet(x = traindata, y = src$name[match(rownames(traindata), src$doc_id)], 
-               family = "multinomial", type.multinomial = "ungrouped", alpha = 1, folds = 10)
+               family = "multinomial", type.multinomial = "ungrouped", alpha = 1, nfolds = 10)
 plot(m)
 prediction <- data.frame(doc_id = rownames(testdata), 
                          name_lambda_1se = predict(m, testdata[, colnames(traindata)], s = m$lambda.1se, type = "class")[, 1],
@@ -45,6 +46,7 @@ print(paste0('Correctly predicted ',
 ##
 ## Naive Bayes model
 ##
+set.seed(42)
 m <- textmodel_nb(x = as.dfm(traindata), y = src$name[match(rownames(traindata), src$doc_id)], 
              smooth = 1, prior = "uniform", 
              distribution = "multinomial")
