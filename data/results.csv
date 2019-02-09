@@ -1,5 +1,5 @@
 model,total,correct
-plain vanilla StarSpace,1800,1115
+plain vanilla StarSpace,1800,1297
 lemmatized StarSpace,1800,1281
 Keras single LSTM,1800,1365
 Keras stacked LSTM, 1800, 1376

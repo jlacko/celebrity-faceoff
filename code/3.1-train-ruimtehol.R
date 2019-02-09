@@ -10,10 +10,17 @@ src <- read_csv('./data/train_tweets.csv') %>% # or what not...
 
 model <- embed_tagspace(x = src$text, y = src$name,
                         dim = 75, 
-                        lr = 0.01, epoch = 40, 
-                        loss = "softmax", adagrad = TRUE, 
-                        similarity = "cosine", negSearchLimit = 50,
-                        ngrams = 2, minCount = 2)
+                        lr = 0.01, 
+                        epoch = 20, 
+                        loss = "hinge", 
+                        margin = 0.5, 
+                        adagrad = FALSE, 
+                        similarity = "dot", 
+                        negSearchLimit = 10, 
+                        maxNegSamples = 2,
+                        ngrams = 2, 
+                        minCount = 2
+                        )
 plot(model)
 
 starspace_save_model(model, file = './models/starspace.rds', method = 'ruimtehol')
