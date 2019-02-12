@@ -57,7 +57,6 @@ src <- subset(words, traintest == "train")
 set.seed(42) # trust no other!
 model <- embed_tagspace(x = src$text, y = src$name, 
                         embeddings = pretrained_embeddings, 
-                        embeddings_optimise = TRUE,
                         lr = 0.01, epoch = 20, 
                         loss = "hinge", margin = 2, adagrad = TRUE, 
                         similarity = "dot", negSearchLimit = 10, maxNegSamples = 2,
@@ -68,8 +67,8 @@ plot(model)
 src <- subset(words, traintest == "test")
 
 embedding_labels <- as.matrix(model, type = "labels", prefix = FALSE)
-embedding_tweets <- starspace_embedding(model, src$text)
-rownames(embedding_tweets) <- src$doc_id
+embedding_tweets <- predict(model, type = "embedding",
+                            newdata = data.frame(doc_id = src$doc_id, text = src$text, stringsAsFactors = FALSE))
 prediction <- embedding_similarity(embedding_tweets, embedding_labels, type = "dot", top_n = 1)
 prediction <- mutate(prediction, doc_id = term1)
 prediction <- inner_join(prediction, src, by = "doc_id")
@@ -105,7 +104,6 @@ combinedembeddings <- cbind(allembeddings$fasttext[combinedembeddings, ], allemb
 set.seed(42) # trust no other!
 model <- embed_tagspace(x = src$text, y = src$name, 
                         embeddings = combinedembeddings, 
-                        embeddings_optimise = TRUE,
                         lr = 0.01, epoch = 50, 
                         loss = "hinge", margin = 1, adagrad = TRUE, 
                         similarity = "dot", negSearchLimit = 10, maxNegSamples = 2,
@@ -116,8 +114,8 @@ plot(model)
 src <- subset(words, traintest == "test")
 
 embedding_labels <- as.matrix(model, type = "labels", prefix = FALSE)
-embedding_tweets <- starspace_embedding(model, src$text)
-rownames(embedding_tweets) <- src$doc_id
+embedding_tweets <- predict(model, type = "embedding",
+                            newdata = data.frame(doc_id = src$doc_id, text = src$text, stringsAsFactors = FALSE))
 prediction <- embedding_similarity(embedding_tweets, embedding_labels, type = "dot", top_n = 1)
 prediction <- mutate(prediction, doc_id = term1)
 prediction <- inner_join(prediction, src, by = "doc_id")
