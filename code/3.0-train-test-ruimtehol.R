@@ -33,8 +33,8 @@ plot(model)
 src <- subset(words, traintest == "test")
 
 embedding_labels <- as.matrix(model, type = "labels", prefix = FALSE)
-embedding_tweets <- starspace_embedding(model, src$text)
-rownames(embedding_tweets) <- src$doc_id
+embedding_tweets <- predict(model, type = "embedding",
+                            newdata = data.frame(doc_id = src$doc_id, text = src$text, stringsAsFactors = FALSE))
 prediction <- embedding_similarity(embedding_tweets, embedding_labels, type = "cosine", top_n = 1)
 prediction <- mutate(prediction, doc_id = term1)
 prediction <- inner_join(prediction, src, by = "doc_id")
@@ -72,8 +72,8 @@ embedding_similarity(starspace_embedding(model, "__label__hadleywickham"),
 src <- subset(words, traintest == "test")
 
 embedding_labels <- as.matrix(model, type = "labels", prefix = FALSE)
-embedding_tweets <- starspace_embedding(model, src$text)
-rownames(embedding_tweets) <- src$doc_id
+embedding_tweets <- predict(model, type = "embedding",
+                            newdata = data.frame(doc_id = src$doc_id, text = src$text, stringsAsFactors = FALSE))
 prediction <- embedding_similarity(embedding_tweets, embedding_labels, type = "cosine", top_n = 1)
 prediction <- mutate(prediction, doc_id = term1)
 prediction <- inner_join(prediction, src, by = "doc_id")
