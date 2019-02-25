@@ -1,0 +1,407 @@
+---
+title: "Some keras models for text classification"
+author: "Simon Roth"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, fig.height = 4, fig.width = 6)
+```
+
+# Packages
+
+```{r}
+pacman::p_load(tidyverse, keras, caret, e1071)
+```
+
+```{r}
+vis_table <- function(pred, real){
+  tibble(preds = pred, real = real) %>% 
+    dplyr::count(preds, real) %>% 
+    dplyr::group_by(real) %>% 
+    dplyr::mutate(n_real = sum(n)) %>% 
+    ungroup() %>% 
+    dplyr::mutate(perc_real = round(n/n_real * 100, 1)) %>%
+    dplyr::mutate(label = paste0(n, "\n", perc_real, "%")) %>% 
+    mutate(preds = factor(preds, levels = sort(unique(preds), decreasing = T))) %>% 
+    mutate(real = factor(real, levels = sort(unique(real), decreasing = F))) %>% 
+    #mutate(real = factor(real)) %>% 
+    ggplot(aes(real, preds, fill = n)) + 
+    ggplot2::geom_tile(alpha = 0.8) + 
+    #viridis::scale_fill_viridis(direction = -1) + 
+    scale_fill_gradient(low = "white", high = "black")+
+    scale_x_discrete(position = "top") + 
+    ggthemes::theme_few() + 
+    theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = -.1)) + 
+    coord_fixed() + 
+    labs(x = "Real value y", y = "Predicted value y hat") +
+    ggplot2::geom_text(aes(label = label))
+}
+```
+
+# Data
+
+* no missing data
+
+```{r}
+tweets <- read_csv("../data/raw_tweets.csv") %>% 
+  arrange(sample(1:n(), size = n())) %>% 
+  glimpse
+```
+
+```{r}
+tweets %>% 
+  count(name, sort = T)
+```
+
+```{r}
+celeb_mat <- tweets$name %>%
+  dummies::dummy() 
+
+celeb_names <- celeb_mat %>% 
+  colnames %>% 
+  str_remove("name|/Users/syro/MEGA/projects/celebrity-faceoff/code/keras_cnn.Rmd")
+
+celeb_target <- celeb_mat %>% 
+  as_tibble %>% 
+  set_names(celeb_names) %>% 
+  glimpse
+```
+
+
+# Train/ Split
+
+```{r}
+set.seed(2019)
+#split_id <- sample(c(T, F), size = nrow(tweets), replace = T, prob = c(.8, .2))
+train_id <- read_csv("../data/train_tweets.csv") %>% pull(id)
+test_id <- read_csv("../data/test_tweets.csv") %>% pull(id)
+
+train <- tweets %>% filter(id %in% train_id)
+test <- tweets %>% filter(id %in% test_id)
+
+y_train <- celeb_target[tweets$id %in% train_id, ] %>% as.matrix
+y_test <- celeb_target[tweets$id %in% test_id, ] %>% as.matrix
+```
+
+
+# Text Preprocessing
+
+* char_maxlen [200, 300]
+* word_maxlen [25, 50]
+
+```{r}
+train %>% 
+  mutate(nchar = str_length(text), nwords = str_count(text, "\\w+")) %>% 
+  select(nchar, nwords) %>% 
+  gather(var, value) %>% 
+  ggplot(aes(value)) +
+  geom_histogram() + 
+  facet_wrap(~var, scales = "free_x")
+```
+
+* The vocab is pretty small max_features [2500, 3500]
+
+```{r}
+train %>% 
+  tidytext::unnest_tokens(word, text, token = "words") %>% 
+  count(word, sort = T) %>% 
+  filter(n > 2)
+```
+
+
+## Word Tokenization
+
+* vectorize the text samples into a 2D integer tensor
+
+```{r}
+library(keras)
+maxlen <- 60
+embedding_dim <- 128
+batch_size <- 32
+epochs <- 2
+max_features <- 13488
+
+tokenizer <- text_tokenizer(num_words = max_features, lower = F, split = " ", char_level = F)
+fit_text_tokenizer(tokenizer, train$text)
+
+x_train <- tokenizer %>% 
+  texts_to_sequences(train$text) %>%
+  pad_sequences(maxlen = maxlen)
+
+x_test <- tokenizer %>% 
+  texts_to_sequences(test$text) %>%
+  pad_sequences(maxlen = maxlen)
+
+dim(x_train)
+```
+
+
+# Models
+
+## Baseline 
+
+* train a 1D convnet with global maxpooling
+
+```{r}
+#inputs <- layer_input(shape = list(maxlen), dtype='int32')
+baseline <- keras_model_sequential() %>% 
+  # We specify the maximum input length to our Embedding layer
+  # so we can later flatten the embedded inputs
+  layer_embedding(input_dim = max_features, output_dim = 50, 
+                  input_length = maxlen) %>% 
+  # We flatten the 3D tensor of embeddings 
+  # into a 2D tensor of shape `(samples, maxlen * output_dim)`
+  layer_flatten() %>% 
+  # We add the classifier on top
+  layer_dense(units = 6, activation = "softmax") 
+
+baseline %>% compile(
+  optimizer = "adam",
+  loss = "categorical_crossentropy",
+  metrics = c("acc")
+)
+
+hist_baseline <- baseline %>% 
+  keras::fit(
+    x_train, y_train,
+    batch_size = batch_size,
+    epochs = 2, 
+    suffle = T,
+    #class_weight = weight_set,
+    validation_split = .1
+  )
+
+score <- baseline %>% 
+  evaluate(
+    x_test, y_test,
+    batch_size = batch_size,
+    verbose = 1
+  )
+
+cat('Test score:', score[[1]], '\n')
+cat('Test accuracy', score[[2]], '\n')
+```
+
+
+
+## GRU + CNN
+
+* [Code](https://www.kaggle.com/mosnoiion/two-rnn-cnn-columns-networks-with-keras)
+* [Paper](http://people.idsia.ch/~ciresan/data/cvpr2012.pdf)
+
+```{r}
+inp <- layer_input(shape = list(maxlen), dtype = "int32", name = "input")
+emm <- inp %>%
+  layer_embedding(
+    input_dim = max_features, 
+    output_dim = 128, 
+    input_length = maxlen
+  )
+  #layer_spatial_dropout_1d(rate = .1)
+
+model_1 <- emm %>%
+  bidirectional(layer_gru(units = 60, return_sequences = T, recurrent_dropout = 0.1)) %>% 
+  layer_conv_1d(30, 3, padding = "valid", activation = "relu", strides = 1) 
+
+model_2 <- emm %>%
+  bidirectional(layer_gru(units = 30, return_sequences = T, recurrent_dropout = 0.1)) %>% 
+  layer_conv_1d(20, 2, padding = "valid", activation = "relu", strides = 1) 
+
+max_pool1 <- model_1 %>% layer_global_max_pooling_1d()
+ave_pool1 <- model_1 %>% layer_global_average_pooling_1d()
+max_pool2 <- model_2 %>% layer_global_max_pooling_1d()
+ave_pool2 <- model_2 %>% layer_global_average_pooling_1d()
+
+outp <- layer_concatenate(list(ave_pool1, max_pool1, ave_pool2, max_pool2)) %>%
+        layer_dense(units = ncol(celeb_mat), activation = "softmax")
+
+gru_cnn_model <- keras_model(inp, outp) %>% 
+  compile(
+    optimizer = "adam",
+    loss = "categorical_crossentropy",
+    metrics = c("acc")
+  )
+
+summary(gru_cnn_model)
+```
+
+
+```{r}
+hist_gru_cnn <- gru_cnn_model %>% 
+  keras::fit(
+    x_train, y_train,
+    batch_size = batch_size,
+    epochs = 2, 
+    suffle = T,
+    #class_weight = weight_set,
+    validation_split = .1
+  )
+
+score <- gru_cnn_model %>% 
+  evaluate(
+    x_test, y_test,
+    batch_size = batch_size,
+    verbose = 1
+  )
+
+cat('Test score:', score[[1]], '\n')
+cat('Test accuracy', score[[2]], '\n')
+```
+
+
+
+```{r}
+pred_gru_cnn <- predict(gru_cnn_model, x = x_test)
+
+pred_names <- pred_gru_cnn %>% 
+  as.data.frame() %>% 
+  set_names(celeb_names) %>% 
+  split(1:nrow(.)) %>% 
+  map_chr(~names(which.max(.x)))
+
+real_names <- test$name
+mean(real_names == pred_names)
+vis_table(real_names, pred_names)
+```
+
+
+
+## Multi Channel CNN (mchannel_cnn)
+
+* [Code](https://www.kaggle.com/yekenot/textcnn-2d-convolution)
+
+```{r}
+# keras::k_clear_session()
+# embed_size <- 64
+# filter_sizes <- c(1, 2, 3, 4)
+# num_filters <- 70
+
+keras_mchannel_cnn <- function(
+  max_features = 10000,
+  embed_size = 128,
+  maxlen = 50,
+  filter_sizes = c(1, 2, 3, 4),
+  num_filters = 50, 
+  embedding_matrix = NULL
+){
+
+  inputs <- keras::layer_input(shape = list(maxlen))
+    
+  if(!is.null(embedding_matrix)){
+    embedding <- inputs %>% 
+      layer_embedding(
+        input_dim = max_features,
+        output_dim = embed_size,
+        weights = list(embedding_matrix),
+        input_length = maxlen,
+        trainable = F
+      )%>% 
+      #layer_spatial_dropout_1d(0.2) %>% 
+      layer_reshape(list(maxlen, embed_size, 1))
+  } else {
+  embedding<- inputs %>%
+    layer_embedding(
+      input_dim = max_features, 
+      output_dim = embed_size, 
+      input_length = maxlen
+    ) %>% 
+    #layer_spatial_dropout_1d(0.2) %>% 
+    layer_reshape(list(maxlen, embed_size, 1))
+  }
+
+  block1 <- embedding %>% 
+    layer_conv_2d(
+      num_filters, 
+      kernel_size = list(filter_sizes[1], embed_size), 
+      kernel_initializer = 'normal',
+      activation='elu'
+    ) %>% 
+    layer_max_pooling_2d(pool_size=list(maxlen - filter_sizes[1] + 1, 1))
+  
+  block2 <- embedding %>% 
+    layer_conv_2d(
+      num_filters, 
+      kernel_size = list(filter_sizes[2], embed_size), 
+      kernel_initializer = 'normal',
+      activation='elu'
+    ) %>% 
+    layer_max_pooling_2d(pool_size=list(maxlen - filter_sizes[2] + 1, 1))
+  
+  block3 <- embedding %>% 
+    layer_conv_2d(
+      num_filters, 
+      kernel_size = list(filter_sizes[3], embed_size), 
+      kernel_initializer = 'normal',
+      activation='elu'
+    ) %>% 
+    layer_max_pooling_2d(pool_size=list(maxlen - filter_sizes[3] + 1, 1))
+  
+  block4 <- embedding %>% 
+    layer_conv_2d(
+      num_filters, 
+      kernel_size = list(filter_sizes[4], embed_size), 
+      kernel_initializer = 'normal',
+      activation='elu'
+    ) %>% 
+    layer_max_pooling_2d(pool_size=list(maxlen - filter_sizes[4] + 1, 1))
+  
+  z <- layer_concatenate(list(block1, block2, block3, block4), axis = 1) %>% 
+    layer_flatten()
+  
+  output <- z %>% 
+    layer_dense(ncol(celeb_mat), activation="softmax")
+  
+  mchannel_cnn <- keras::keras_model(inputs, output)
+
+  return(mchannel_cnn)
+}
+
+mchannel_cnn <- keras_mchannel_cnn(max_features = max_features, embed_size = 128, maxlen = maxlen)
+
+mchannel_cnn %>%
+  compile(
+    loss = "categorical_crossentropy",
+    optimizer = "adam",
+    metrics = "accuracy"
+  )  
+
+summary(mchannel_cnn)
+```
+
+```{r}
+mchannel_cnn_hist <- mchannel_cnn %>% 
+  keras::fit(
+    x_train, y_train, 
+    batch_size = batch_size, 
+    shuffle = T,
+    epochs = 3,
+    validation_split = .1
+  )
+```
+
+```{r}
+score <- mchannel_cnn %>% 
+  evaluate(
+    x_test, y_test,
+    batch_size = batch_size,
+    verbose = 1
+  )
+
+cat('Test score:', score[[1]], '\n')
+cat('Test accuracy', score[[2]], '\n')
+```
+
+```{r}
+pred_mchannel_cnn <- predict(mchannel_cnn, x = x_test)
+
+pred_names <- pred_mchannel_cnn %>% 
+  as.data.frame() %>% 
+  set_names(celeb_names) %>% 
+  split(1:nrow(.)) %>% 
+  map_chr(~names(which.max(.x)))
+
+real_names <- test$name
+mean(real_names == pred_names)
+vis_table(real_names, pred_names)
+```
